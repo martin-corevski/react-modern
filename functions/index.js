@@ -16,6 +16,7 @@ const storageUrl = ''
 // Set your generated vapid public and private keys
 const vapidPublicKey = ''
 const vapidPrivateKey = ''
+// Set your address, example 'mailto:my-email@address.com'
 const vapidDetailsEmail = ''
 
 // Set your firebase db url and service account key inside the functions folder
