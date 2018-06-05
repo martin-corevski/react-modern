@@ -8,6 +8,8 @@ import registerServiceWorker from './registerServiceWorker'
 import 'typeface-roboto'
 // Google analytics
 import ReactGA from 'react-ga'
+// Isomorphic style loader context provider
+import ContextProvider from './hoc/ContextProvider'
 
 import './index.scss'
 import App from './containers/App'
@@ -56,10 +58,17 @@ sagaMiddleware.run(watchActionCreator2)
 ReactGA.initialize(process.env.GA_KEY)
 ReactGA.pageview(window.location.pathname + window.location.search)
 
+// ContextProvider is used in order for isomorphic-style-loader to function properly
+const context = {
+  insertCss: styles => styles._insertCss()
+}
+
 ReactDOM.render(
-  <Provider store={store}>
-    <App />
-  </Provider>,
+  <ContextProvider context={context}>
+    <Provider store={store}>
+      <App />
+    </Provider>
+  </ContextProvider>,
   document.getElementById('root')
 )
 
