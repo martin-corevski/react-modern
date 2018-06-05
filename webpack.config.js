@@ -161,7 +161,7 @@ module.exports = env => {
        * @type {String}
        */
       filename: 'js/bundle.js',
-      chunkFilename: '[id].[hash].bundle.js'
+      chunkFilename: 'js/[id].[hash].bundle.js'
     },
     /**
      * This option determines how the different types of modules in the project
