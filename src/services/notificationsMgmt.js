@@ -2,12 +2,12 @@
 import axios from '../axios'
 import { urlBase64ToUint8Array } from './utility'
 
-const displayEnableNotification = () => {
+const displayNewSubNotification = () => {
   // The content that is a must see in the notification should be part of the
   // title and the body. This is because these two settings will mostly likely
   // be shown on every device whereas the others might not. For example the
   // image might be shown on some and not shown at all on other devices.
-  var options = {
+  const options = {
     // For text under the title, set body option
     body: 'You successfully subscribed to our notifications service!',
     // Icon appears on the right or left side of the pop-up notification
@@ -28,7 +28,7 @@ const displayEnableNotification = () => {
     // Tag acts as an id for the notification, if more than one notification
     // is sent to the device, having the same tag will make the notifications
     // stack. The latest notification will be shown last.
-    tag: 'confirm-notification',
+    tag: 'new-subscription',
     // Even if we use a tag and the same type of notification is sent to the
     // device renotify will make the device vibrate again if set to true.
     renotify: true,
@@ -53,9 +53,6 @@ const displayEnableNotification = () => {
   }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(function (sw) {
-      console.log(
-        '[displayEnableNotification] Notifications subscription from SW'
-      )
       sw.showNotification('Successfully subscribed!', options)
     })
   } else {
@@ -64,7 +61,7 @@ const displayEnableNotification = () => {
 }
 
 const displaySyncNotification = () => {
-  var options = {
+  const options = {
     body: 'The number will be upload as soon as you get internet connection!',
     icon: 'assets/icons/app-icon-96x96.png',
     dir: 'ltr',
@@ -76,11 +73,30 @@ const displaySyncNotification = () => {
   }
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.ready.then(function (sw) {
-      console.log('[displaySyncNotification] Number added to sync queue')
       sw.showNotification('Number added to sync queue!', options)
     })
   } else {
     Notification('Number added to sync queue!', options)
+  }
+}
+
+const displayActiveSubNotification = () => {
+  const options = {
+    body: 'You are already subscribed to our notifications service!',
+    icon: 'assets/icons/app-icon-96x96.png',
+    dir: 'ltr',
+    lang: 'en-US',
+    vibrate: [100, 50, 200, 50, 100],
+    badge: 'assets/icons/app-icon-96x96.png',
+    tag: 'active-subscription',
+    renotify: true
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(function (sw) {
+      sw.showNotification('Already subscribed!', options)
+    })
+  } else {
+    Notification('Already subscribed!', options)
   }
 }
 
@@ -89,7 +105,7 @@ const configurePushSubscription = () => {
   if (!('serviceWorker' in navigator)) {
     return
   }
-  var swReg
+  let swReg
   navigator.serviceWorker.ready
     .then(sw => {
       swReg = sw
@@ -106,25 +122,29 @@ const configurePushSubscription = () => {
         // on the application server and the public is used in the JavaScript code
         // This way someone would need to hack the server in order to start
         // sending push notifications.
-        var convertedKey = urlBase64ToUint8Array(process.env.VAPID_PUBLIC_KEY)
-        return swReg.pushManager.subscribe({
-          // Only this user can see the specific push notification
-          userVisibleOnly: true,
-          // Set the vapid public key
-          applicationServerKey: convertedKey
-        })
+        const convertedKey = urlBase64ToUint8Array(process.env.VAPID_PUBLIC_KEY)
+        swReg.pushManager
+          .subscribe({
+            // Only this user can see the specific push notification
+            userVisibleOnly: true,
+            // Set the vapid public key
+            applicationServerKey: convertedKey
+          })
+          .then(newSub => {
+            // POST new subscriptions to subs table
+            return axios.post('subscriptions.json', newSub)
+          })
+          .then(res => {
+            if (res.statusText === 'OK' || res.status === 200) {
+              displayNewSubNotification()
+            }
+          })
+          .catch(err => {
+            console.log('[configurePushSubscription] Subscription failed', err)
+          })
       } else {
         // Active subscription available
-        console.log('[configurePushSubscription] Active subscription available')
-      }
-    })
-    .then(newSub => {
-      // POST new subscriptions to subs table
-      return axios.post('subscriptions.json', newSub)
-    })
-    .then(res => {
-      if (res.statusText === 'OK' || res.status === 200) {
-        displayEnableNotification()
+        displayActiveSubNotification()
       }
     })
     .catch(err => {
@@ -136,10 +156,7 @@ const configurePushSubscription = () => {
 // notifications
 export const enableNotifications = () => {
   Notification.requestPermission(result => {
-    if (result !== 'granted') {
-      console.log('[enableNotifications] No permission granted!')
-    } else {
-      // displayEnableNotification()
+    if (result === 'granted') {
       configurePushSubscription()
     }
   })
@@ -147,9 +164,7 @@ export const enableNotifications = () => {
 
 export const addedToSyncQueueNotification = () => {
   Notification.requestPermission(result => {
-    if (result !== 'granted') {
-      console.log('[addedToSyncQueueNotification] No permission granted!')
-    } else {
+    if (result === 'granted') {
       displaySyncNotification()
     }
   })
