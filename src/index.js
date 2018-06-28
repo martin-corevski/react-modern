@@ -60,7 +60,12 @@ ReactGA.pageview(window.location.pathname + window.location.search)
 
 // ContextProvider is used in order for isomorphic-style-loader to function properly
 const context = {
-  insertCss: styles => styles._insertCss()
+  insertCss: (...styles) => {
+    const removeCss = styles.map(style => style._insertCss())
+    return () => {
+      removeCss.forEach(f => f())
+    }
+  }
 }
 
 ReactDOM.render(
